@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Steven Domingo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script>
+// Safe loader — catches CDN failures in sandboxed previews
+window.addEventListener('error', function(e) {
+  if (document.getElementById('setup-screen')) return;
+  const el = document.createElement('div');
+  el.id = 'setup-screen';
+  el.style.cssText = 'position:fixed;inset:0;background:#05091A;display:flex;align-items:center;justify-content:center;z-index:9999;font-family:sans-serif;';
+  el.innerHTML = '<div style="background:#0C1530;border:0.5px solid #1B2D58;border-radius:14px;padding:48px 40px;max-width:460px;text-align:center;"><p style="font-size:22px;color:#EBF0FF;margin-bottom:8px;font-family:serif;">Steven Domingo</p><p style="font-size:13px;color:#5A6E99;margin-bottom:24px;">Admin panel</p><div style="background:#0a1020;border:0.5px solid #1B2D58;border-radius:10px;padding:20px;text-align:left;margin-bottom:20px;"><p style="font-size:12px;color:#4F8EF7;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px;">Setup required</p><p style="font-size:13px;color:#5A6E99;line-height:1.6;">This admin panel requires Supabase credentials to run. Open <code style="color:#EBF0FF;background:#1B2D58;padding:1px 6px;border-radius:4px;">admin.html</code> in a text editor and replace <code style="color:#EBF0FF;background:#1B2D58;padding:1px 6px;border-radius:4px;">YOUR_SUPABASE_URL</code> and <code style="color:#EBF0FF;background:#1B2D58;padding:1px 6px;border-radius:4px;">YOUR_SUPABASE_ANON_KEY</code> with your real keys, then deploy to Vercel.</p></div><p style="font-size:12px;color:#3A4E77;">See README.md for full setup instructions.</p></div>';
+  document.body.appendChild(el);
+}, true);
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #05091A; --bg1: #0C1530; --bg2: #101d3e;
+    --border: #1B2D58; --border-soft: #152244;
+    --text: #EBF0FF; --muted: #5A6E99; --dimmed: #3A4E77;
+    --accent: #4F8EF7; --danger: #F26B5B; --success: #2EC4B6;
+    --investing: #D4A843; --health: #2EC4B6; --travel: #F26B5B; --business: #9B89E8;
+    --r: 14px; --r-sm: 8px;
+  }
+  html, body { height: 100%; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-weight: 300; }
+
+  /* ── LOGIN ── */
+  #login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .login-box { background: var(--bg1); border: 0.5px solid var(--border); border-radius: var(--r); padding: 48px 40px; width: 100%; max-width: 400px; text-align: center; }
+  .login-logo { font-family: 'Playfair Display', serif; font-size: 22px; margin-bottom: 8px; }
+  .login-sub { font-size: 13px; color: var(--muted); margin-bottom: 32px; }
+  .login-error { font-size: 13px; color: var(--danger); margin-top: 12px; min-height: 20px; }
+
+  /* ── LAYOUT ── */
+  #app { display: none; min-height: 100vh; }
+  .admin-nav { position: sticky; top: 0; background: rgba(5,9,26,0.95); backdrop-filter: blur(12px); border-bottom: 0.5px solid var(--border-soft); padding: 0 32px; height: 60px; display: flex; align-items: center; gap: 24px; z-index: 50; }
+  .admin-logo { font-family: 'Playfair Display', serif; font-size: 17px; color: var(--text); margin-right: auto; }
+  .admin-logo span { font-size: 12px; color: var(--muted); font-family: 'DM Sans', sans-serif; font-weight: 300; margin-left: 8px; }
+  .nav-btn { font-size: 12px; font-weight: 400; letter-spacing: 0.05em; padding: 6px 16px; border-radius: var(--r-sm); border: 0.5px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; transition: all 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  .nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .nav-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .nav-btn.primary:hover { opacity: 0.85; }
+  .nav-btn.danger { border-color: var(--danger); color: var(--danger); }
+  .nav-btn.danger:hover { background: rgba(242,107,91,0.1); }
+
+  .admin-body { display: flex; gap: 0; }
+
+  /* SIDEBAR */
+  .sidebar { width: 220px; flex-shrink: 0; border-right: 0.5px solid var(--border-soft); padding: 28px 0; position: sticky; top: 60px; height: calc(100vh - 60px); overflow-y: auto; }
+  .sidebar-section { padding: 0 20px 20px; }
+  .sidebar-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dimmed); margin-bottom: 10px; padding: 0 8px; }
+  .sidebar-link { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: var(--r-sm); font-size: 13px; color: var(--muted); cursor: pointer; transition: all 0.2s; border: none; background: none; width: 100%; text-align: left; }
+  .sidebar-link:hover { background: var(--bg1); color: var(--text); }
+  .sidebar-link.active { background: rgba(79,142,247,0.1); color: var(--accent); }
+  .sidebar-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .count-badge { margin-left: auto; font-size: 10px; background: var(--bg2); color: var(--dimmed); padding: 1px 7px; border-radius: 99px; }
+
+  /* MAIN */
+  .main-panel { flex: 1; padding: 36px; min-width: 0; }
+  .panel-header { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; }
+  .panel-title { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 400; }
+  .panel-count { font-size: 13px; color: var(--muted); }
+
+  /* CARDS TABLE / GRID */
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+  .admin-card { background: var(--bg1); border: 0.5px solid var(--border); border-radius: var(--r); overflow: hidden; transition: border-color 0.2s; }
+  .admin-card:hover { border-color: rgba(79,142,247,0.3); }
+  .admin-card-media { position: relative; padding-bottom: 120%; background: var(--bg); overflow: hidden; }
+  .admin-card-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .admin-card-media iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; pointer-events: none; }
+  .card-type-badge { position: absolute; top: 10px; left: 10px; font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 9px; border-radius: 99px; background: rgba(5,9,26,0.75); border: 0.5px solid var(--border); }
+  .card-unpublished { position: absolute; top: 10px; right: 10px; font-size: 10px; padding: 3px 9px; border-radius: 99px; background: rgba(242,107,91,0.2); color: var(--danger); border: 0.5px solid rgba(242,107,91,0.4); }
+  .admin-card-body { padding: 12px 14px 14px; }
+  .admin-card-cat { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; }
+  .admin-card-cat.investing { color: var(--investing); }
+  .admin-card-cat.health    { color: var(--health); }
+  .admin-card-cat.travel    { color: var(--travel); }
+  .admin-card-cat.business  { color: var(--business); }
+  .admin-card-title { font-size: 14px; font-weight: 500; margin: 4px 0 3px; line-height: 1.3; }
+  .admin-card-sub { font-size: 11px; color: var(--muted); margin-bottom: 12px; }
+  .admin-card-actions { display: flex; gap: 6px; }
+  .action-btn { font-size: 11px; font-weight: 400; padding: 5px 12px; border-radius: var(--r-sm); border: 0.5px solid; background: transparent; cursor: pointer; transition: all 0.2s; }
+  .action-btn.edit  { border-color: var(--border); color: var(--muted); }
+  .action-btn.edit:hover  { border-color: var(--accent); color: var(--accent); }
+  .action-btn.delete { border-color: transparent; color: var(--dimmed); }
+  .action-btn.delete:hover { border-color: var(--danger); color: var(--danger); }
+  .action-btn.toggle { border-color: var(--border); color: var(--dimmed); }
+  .action-btn.toggle:hover { border-color: var(--success); color: var(--success); }
+
+  /* DRAG HANDLE */
+  .drag-handle { cursor: grab; color: var(--dimmed); padding: 4px; font-size: 14px; }
+  .drag-handle:active { cursor: grabbing; }
+
+  /* EMPTY STATE */
+  .empty-state { text-align: center; padding: 80px 20px; color: var(--dimmed); }
+  .empty-state svg { margin-bottom: 16px; opacity: 0.3; }
+  .empty-state p { font-size: 14px; margin-bottom: 20px; }
+
+  /* ── MODAL ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(5,9,26,0.85); backdrop-filter: blur(6px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal { background: var(--bg1); border: 0.5px solid var(--border); border-radius: var(--r); width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; }
+  .modal-header { padding: 24px 28px 0; display: flex; align-items: center; gap: 12px; }
+  .modal-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 400; flex: 1; }
+  .modal-close { width: 32px; height: 32px; border-radius: 50%; border: 0.5px solid var(--border); background: none; color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; transition: all 0.2s; }
+  .modal-close:hover { border-color: var(--danger); color: var(--danger); }
+  .modal-body { padding: 24px 28px 28px; }
+
+  /* FORM */
+  .form-row { margin-bottom: 18px; }
+  .form-row label { display: block; font-size: 12px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
+  .form-row input, .form-row select, .form-row textarea {
+    width: 100%; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--r-sm);
+    color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 300;
+    padding: 10px 14px; outline: none; transition: border-color 0.2s;
+  }
+  .form-row input:focus, .form-row select:focus, .form-row textarea:focus { border-color: var(--accent); }
+  .form-row textarea { resize: vertical; min-height: 80px; }
+  .form-row select option { background: var(--bg1); }
+  .form-hint { font-size: 11px; color: var(--dimmed); margin-top: 5px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-check { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  .form-check input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+  .form-check span { font-size: 13px; color: var(--muted); }
+  .form-divider { border: none; border-top: 0.5px solid var(--border-soft); margin: 20px 0; }
+  .conditional { display: none; }
+  .conditional.show { display: block; }
+  .form-actions { display: flex; gap: 10px; justify-content: flex-end; padding-top: 8px; }
+  .btn { font-size: 13px; font-weight: 500; padding: 10px 22px; border-radius: var(--r-sm); border: 0.5px solid; cursor: pointer; transition: all 0.2s; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-secondary { background: transparent; border-color: var(--border); color: var(--muted); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* TYPE TABS */
+  .type-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 0; }
+  .type-tab { font-size: 12px; font-weight: 400; padding: 6px 14px; border-radius: 99px; border: 0.5px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; transition: all 0.2s; }
+  .type-tab.active { background: rgba(79,142,247,0.12); border-color: var(--accent); color: var(--accent); }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 28px; right: 28px; background: var(--bg1); border: 0.5px solid var(--border); border-radius: var(--r-sm); padding: 12px 20px; font-size: 13px; color: var(--text); z-index: 999; transform: translateY(20px); opacity: 0; transition: all 0.3s; pointer-events: none; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: var(--success); color: var(--success); }
+  .toast.error   { border-color: var(--danger); color: var(--danger); }
+
+  /* GRAPHIC PREVIEW */
+  .graphic-preview { border-radius: var(--r-sm); overflow: hidden; margin-top: 10px; min-height: 80px; display: flex; align-items: flex-end; padding: 20px; }
+  .graphic-preview p { font-family: 'Playfair Display', serif; font-size: 18px; line-height: 1.3; color: var(--text); }
+
+  .loading-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .admin-body { flex-direction: column; }
+    .main-panel { padding: 20px; }
+    .cards-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 480px) { .cards-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <p class="login-logo">Steven Domingo</p>
+    <p class="login-sub">Admin — sign in to manage content</p>
+    <div class="form-row" style="text-align:left;">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="you@email.com" autocomplete="email">
+    </div>
+    <div class="form-row" style="text-align:left;">
+      <label>Password</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary" style="width:100%;" onclick="doLogin()">Sign in</button>
+    <p class="login-error" id="login-error"></p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <nav class="admin-nav">
+    <span class="admin-logo">Steven Domingo <span>Admin</span></span>
+    <a href="/" class="nav-btn" target="_blank">↗ View site</a>
+    <button class="nav-btn primary" onclick="openAddModal()">+ Add card</button>
+    <button class="nav-btn danger" onclick="doLogout()">Sign out</button>
+  </nav>
+
+  <div class="admin-body">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <p class="sidebar-label">Sections</p>
+        <button class="sidebar-link active" data-filter="all" onclick="filterCards('all',this)">
+          <span class="sidebar-dot" style="background:var(--accent)"></span> All cards
+          <span class="count-badge" id="count-all">0</span>
+        </button>
+        <button class="sidebar-link" data-filter="featured" onclick="filterCards('featured',this)">
+          <span class="sidebar-dot" style="background:var(--accent)"></span> Featured
+          <span class="count-badge" id="count-featured">0</span>
+        </button>
+        <button class="sidebar-link" data-filter="health" onclick="filterCards('health',this)">
+          <span class="sidebar-dot" style="background:var(--health)"></span> Health
+          <span class="count-badge" id="count-health">0</span>
+        </button>
+        <button class="sidebar-link" data-filter="investing" onclick="filterCards('investing',this)">
+          <span class="sidebar-dot" style="background:var(--investing)"></span> Investing
+          <span class="count-badge" id="count-investing">0</span>
+        </button>
+        <button class="sidebar-link" data-filter="travel" onclick="filterCards('travel',this)">
+          <span class="sidebar-dot" style="background:var(--travel)"></span> Travel
+          <span class="count-badge" id="count-travel">0</span>
+        </button>
+        <button class="sidebar-link" data-filter="business" onclick="filterCards('business',this)">
+          <span class="sidebar-dot" style="background:var(--business)"></span> Business
+          <span class="count-badge" id="count-business">0</span>
+        </button>
+      </div>
+      <div class="sidebar-section">
+        <p class="sidebar-label">Card types</p>
+        <button class="sidebar-link" data-filter="type:video"   onclick="filterCards('type:video',this)"><span class="sidebar-dot" style="background:var(--dimmed)"></span> Video</button>
+        <button class="sidebar-link" data-filter="type:photo"   onclick="filterCards('type:photo',this)"><span class="sidebar-dot" style="background:var(--dimmed)"></span> Photo</button>
+        <button class="sidebar-link" data-filter="type:graphic" onclick="filterCards('type:graphic',this)"><span class="sidebar-dot" style="background:var(--dimmed)"></span> Graphic</button>
+        <button class="sidebar-link" data-filter="type:link"    onclick="filterCards('type:link',this)"><span class="sidebar-dot" style="background:var(--dimmed)"></span> Link</button>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main-panel">
+      <div class="panel-header">
+        <h1 class="panel-title" id="panel-title">All cards</h1>
+        <span class="panel-count" id="panel-count"></span>
+      </div>
+      <div class="cards-grid" id="cards-grid"></div>
+    </main>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOnBg(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modal-title">Add card</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- TYPE TABS -->
+      <div class="form-row">
+        <label>Card type</label>
+        <div class="type-tabs">
+          <button class="type-tab active" data-type="video"   onclick="setType('video',this)">🎬 Video</button>
+          <button class="type-tab"        data-type="photo"   onclick="setType('photo',this)">🖼 Photo</button>
+          <button class="type-tab"        data-type="graphic" onclick="setType('graphic',this)">✏️ Graphic</button>
+          <button class="type-tab"        data-type="link"    onclick="setType('link',this)">🔗 Link</button>
+        </div>
+      </div>
+      <hr class="form-divider">
+
+      <!-- COMMON -->
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Category</label>
+          <select id="f-category">
+            <option value="health">Health</option>
+            <option value="investing">Investing</option>
+            <option value="travel">Travel</option>
+            <option value="business">Business</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Aspect ratio</label>
+          <select id="f-ratio">
+            <option value="9:16">9:16 — Vertical (default)</option>
+            <option value="1:1">1:1 — Square</option>
+            <option value="16:9">16:9 — Landscape</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Title</label>
+        <input type="text" id="f-title" placeholder="E.g. 3-Day Water Fast Protocol">
+      </div>
+      <div class="form-row">
+        <label>Subtitle <span style="font-weight:300;text-transform:none;letter-spacing:0;color:var(--dimmed)">(one line)</span></label>
+        <input type="text" id="f-subtitle" placeholder="E.g. Prep, electrolytes, fasting days, and refeed.">
+      </div>
+
+      <!-- VIDEO fields -->
+      <div id="fields-video">
+        <div class="form-row">
+          <label>Embed URL</label>
+          <input type="url" id="f-embed" placeholder="https://www.youtube.com/embed/VIDEO_ID">
+          <p class="form-hint">YouTube: use /embed/ID · Vimeo: use player.vimeo.com/video/ID · TikTok: use the oEmbed iframe src</p>
+        </div>
+        <div class="form-row">
+          <label>Overlay steps <span style="font-weight:300;text-transform:none;letter-spacing:0;color:var(--dimmed)">(comma-separated)</span></label>
+          <input type="text" id="f-overlay" placeholder="Prep, Day 1, Day 2, Day 3, Refeed">
+        </div>
+        <div class="form-row">
+          <label>Link URL <span style="font-weight:300;text-transform:none;letter-spacing:0;color:var(--dimmed)">(Watch button destination)</span></label>
+          <input type="url" id="f-link-video" placeholder="https://youtube.com/shorts/...">
+        </div>
+      </div>
+
+      <!-- PHOTO fields -->
+      <div id="fields-photo" class="conditional">
+        <div class="form-row">
+          <label>Image URL</label>
+          <input type="url" id="f-image" placeholder="https://your-image-url.jpg">
+          <p class="form-hint">Upload to Supabase Storage, Cloudinary, or any CDN and paste the public URL here.</p>
+        </div>
+        <div class="form-row">
+          <label>Overlay text <span style="font-weight:300;text-transform:none;letter-spacing:0;color:var(--dimmed)">(comma-separated)</span></label>
+          <input type="text" id="f-overlay-photo" placeholder="Before, After">
+        </div>
+        <div class="form-row">
+          <label>Link URL <span style="font-weight:300;text-transform:none;letter-spacing:0;color:var(--dimmed)">(View button destination)</span></label>
+          <input type="url" id="f-link-photo" placeholder="https://...">
+        </div>
+      </div>
+
+      <!-- GRAPHIC fields -->
+      <div id="fields-graphic" class="conditional">
+        <div class="form-row">
+          <label>Quote / text</label>
+          <textarea id="f-graphic-text" placeholder="&quot;Your quote or callout here.&quot;"></textarea>
+        </div>
+        <div class="form-row">
+          <label>Background color</label>
+          <input type="color" id="f-graphic-bg" value="#0D1B3E" style="height:40px;padding:4px;">
+          <div class="graphic-preview" id="graphic-preview" style="background:#0D1B3E;"><p id="graphic-preview-text">Preview text appears here.</p></div>
+        </div>
+      </div>
+
+      <!-- LINK fields -->
+      <div id="fields-link" class="conditional">
+        <div class="form-row">
+          <label>Destination URL</label>
+          <input type="url" id="f-link-url" placeholder="https://...">
+        </div>
+        <div class="form-row">
+          <label>Icon (emoji)</label>
+          <input type="text" id="f-link-icon" placeholder="🔗" maxlength="4" style="font-size:22px;">
+        </div>
+        <div class="form-row">
+          <label>Card background color</label>
+          <input type="color" id="f-link-bg" value="#0D1B3E" style="height:40px;padding:4px;">
+        </div>
+      </div>
+
+      <hr class="form-divider">
+
+      <div class="form-grid">
+        <label class="form-check">
+          <input type="checkbox" id="f-featured">
+          <span>Mark as Featured</span>
+        </label>
+        <label class="form-check">
+          <input type="checkbox" id="f-published" checked>
+          <span>Published (visible)</span>
+        </label>
+      </div>
+
+      <input type="hidden" id="f-id">
+
+      <div class="form-actions" style="margin-top:24px;">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" id="save-btn" onclick="saveCard()">
+          <span id="save-label">Save card</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONFIG ───────────────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://juhlinqkiourjzaivqbs.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1aGxpbnFraW91cmp6YWl2cWJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNDg3MDcsImV4cCI6MjA5MjgyNDcwN30.5MObCHVK6822gcKLmVkmX-M0mekLmrIO2wIXHyKRYLw';
+// ────────────────────────────────────────────────────────────────────────────
+
+const CONFIGURED = true; // credentials are set
+if (!CONFIGURED) {
+  document.getElementById('login-screen').innerHTML = `
+    <div style="background:#0C1530;border:0.5px solid #1B2D58;border-radius:14px;padding:48px 40px;max-width:500px;width:100%;margin:20px;">
+      <p style="font-family:'Playfair Display',serif;font-size:22px;color:#EBF0FF;margin-bottom:6px;">Steven Domingo</p>
+      <p style="font-size:13px;color:#5A6E99;margin-bottom:28px;">Admin panel</p>
+      <div style="background:#060e24;border:0.5px solid #1B2D58;border-radius:10px;padding:20px 22px;margin-bottom:20px;">
+        <p style="font-size:11px;color:#4F8EF7;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;">Setup required before deploying</p>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div style="display:flex;gap:12px;"><span style="background:#4F8EF7;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;">1</span><p style="font-size:13px;color:#5A6E99;line-height:1.5;">Create a free project at <strong style="color:#EBF0FF;">supabase.com</strong> and run <code style="background:#1B2D58;padding:1px 6px;border-radius:4px;color:#EBF0FF;">supabase-schema.sql</code> in the SQL Editor</p></div>
+          <div style="display:flex;gap:12px;"><span style="background:#4F8EF7;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;">2</span><p style="font-size:13px;color:#5A6E99;line-height:1.5;">Open <code style="background:#1B2D58;padding:1px 6px;border-radius:4px;color:#EBF0FF;">admin.html</code> and <code style="background:#1B2D58;padding:1px 6px;border-radius:4px;color:#EBF0FF;">index.html</code> and paste your Supabase URL + anon key where indicated</p></div>
+          <div style="display:flex;gap:12px;"><span style="background:#4F8EF7;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;">3</span><p style="font-size:13px;color:#5A6E99;line-height:1.5;">Deploy the folder to <strong style="color:#EBF0FF;">Vercel</strong>, create an admin user in Supabase Auth, then visit <code style="background:#1B2D58;padding:1px 6px;border-radius:4px;color:#EBF0FF;">yoursite.com/admin</code></p></div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:#3A4E77;text-align:center;">Full instructions in README.md</p>
+    </div>`;
+} else {
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let allCards = [];
+let currentFilter = 'all';
+let currentType = 'video';
+
+// ── AUTH ─────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const err   = document.getElementById('login-error');
+  err.textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { err.textContent = error.message; return; }
+  showApp();
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+async function checkAuth() {
+  const { data } = await sb.auth.getSession();
+  if (data?.session) showApp();
+  else document.getElementById('login-screen').style.display = 'flex';
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadCards();
+}
+
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// ── LOAD CARDS ───────────────────────────────────────────────────────────────
+async function loadCards() {
+  const { data, error } = await sb.from('cards').select('*').order('sort_order', { ascending: true });
+  if (error) { showToast('Failed to load cards', 'error'); return; }
+  allCards = data || [];
+  updateCounts();
+  renderCards();
+}
+
+function updateCounts() {
+  document.getElementById('count-all').textContent      = allCards.length;
+  document.getElementById('count-featured').textContent = allCards.filter(c=>c.featured).length;
+  document.getElementById('count-health').textContent   = allCards.filter(c=>c.category==='health').length;
+  document.getElementById('count-investing').textContent= allCards.filter(c=>c.category==='investing').length;
+  document.getElementById('count-travel').textContent   = allCards.filter(c=>c.category==='travel').length;
+  document.getElementById('count-business').textContent = allCards.filter(c=>c.category==='business').length;
+}
+
+function filterCards(filter, el) {
+  currentFilter = filter;
+  document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const titles = { all:'All cards', featured:'Featured', health:'Health', investing:'Investing', travel:'Travel', business:'Business', 'type:video':'Video cards', 'type:photo':'Photo cards', 'type:graphic':'Graphic cards', 'type:link':'Link cards' };
+  document.getElementById('panel-title').textContent = titles[filter] || filter;
+  renderCards();
+}
+
+function renderCards() {
+  const grid = document.getElementById('cards-grid');
+  let cards = allCards;
+  if (currentFilter === 'featured') cards = cards.filter(c => c.featured);
+  else if (currentFilter.startsWith('type:')) cards = cards.filter(c => c.type === currentFilter.split(':')[1]);
+  else if (currentFilter !== 'all') cards = cards.filter(c => c.category === currentFilter);
+
+  document.getElementById('panel-count').textContent = `${cards.length} card${cards.length!==1?'s':''}`;
+
+  if (cards.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><p>No cards here yet.</p><button class="btn btn-primary" onclick="openAddModal()">Add your first card</button></div>`;
+    return;
+  }
+
+  grid.innerHTML = cards.map(card => `
+    <div class="admin-card" data-id="${card.id}">
+      <div class="admin-card-media">
+        ${card.type==='video' && card.embed_url ? `<iframe src="${card.embed_url}" allow="autoplay"></iframe>` : ''}
+        ${card.type==='photo' && card.image_url ? `<img src="${card.image_url}" alt="${card.title}">` : ''}
+        ${(card.type==='graphic'||card.type==='link') ? `<div style="position:absolute;inset:0;background:${card.graphic_bg||'#0D1B3E'};display:flex;align-items:flex-end;padding:20px;"><p style="font-family:'Playfair Display',serif;font-size:16px;line-height:1.3;color:var(--text)">${card.graphic_text||card.title}</p></div>` : ''}
+        ${!card.embed_url && !card.image_url && card.type==='video' ? `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dimmed);font-size:12px;">No embed URL</div>` : ''}
+        <span class="card-type-badge">${card.type}</span>
+        ${!card.published ? `<span class="card-unpublished">Draft</span>` : ''}
+      </div>
+      <div class="admin-card-body">
+        <span class="admin-card-cat ${card.category}">${card.category}</span>
+        <p class="admin-card-title">${card.title}</p>
+        <p class="admin-card-sub">${card.subtitle||'—'}</p>
+        <div class="admin-card-actions">
+          <button class="action-btn edit"   onclick="openEditModal('${card.id}')">Edit</button>
+          <button class="action-btn toggle" onclick="togglePublish('${card.id}',${card.published})">${card.published?'Unpublish':'Publish'}</button>
+          <button class="action-btn delete" onclick="deleteCard('${card.id}')">Delete</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── MODAL ────────────────────────────────────────────────────────────────────
+function openAddModal() {
+  resetForm();
+  document.getElementById('modal-title').textContent = 'Add card';
+  document.getElementById('save-label').textContent = 'Save card';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function openEditModal(id) {
+  const card = allCards.find(c => String(c.id) === String(id));
+  if (!card) return;
+  resetForm();
+  document.getElementById('modal-title').textContent = 'Edit card';
+  document.getElementById('save-label').textContent = 'Update card';
+  document.getElementById('f-id').value = card.id;
+  document.getElementById('f-category').value = card.category;
+  document.getElementById('f-ratio').value = card.ratio || '9:16';
+  document.getElementById('f-title').value = card.title || '';
+  document.getElementById('f-subtitle').value = card.subtitle || '';
+  document.getElementById('f-featured').checked = card.featured || false;
+  document.getElementById('f-published').checked = card.published !== false;
+  setType(card.type || 'video');
+  if (card.type === 'video') {
+    document.getElementById('f-embed').value = card.embed_url || '';
+    document.getElementById('f-overlay').value = card.overlay_steps || '';
+    document.getElementById('f-link-video').value = card.link_url || '';
+  } else if (card.type === 'photo') {
+    document.getElementById('f-image').value = card.image_url || '';
+    document.getElementById('f-overlay-photo').value = card.overlay_steps || '';
+    document.getElementById('f-link-photo').value = card.link_url || '';
+  } else if (card.type === 'graphic') {
+    document.getElementById('f-graphic-text').value = card.graphic_text || '';
+    document.getElementById('f-graphic-bg').value = card.graphic_bg || '#0D1B3E';
+    updateGraphicPreview();
+  } else if (card.type === 'link') {
+    document.getElementById('f-link-url').value = card.link_url || '';
+    document.getElementById('f-link-icon').value = card.link_icon || '🔗';
+    document.getElementById('f-link-bg').value = card.graphic_bg || '#0D1B3E';
+  }
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+function closeModalOnBg(e) { if (e.target === document.getElementById('modal-overlay')) closeModal(); }
+
+function resetForm() {
+  document.getElementById('f-id').value = '';
+  document.getElementById('f-title').value = '';
+  document.getElementById('f-subtitle').value = '';
+  document.getElementById('f-embed').value = '';
+  document.getElementById('f-overlay').value = '';
+  document.getElementById('f-link-video').value = '';
+  document.getElementById('f-image').value = '';
+  document.getElementById('f-overlay-photo').value = '';
+  document.getElementById('f-link-photo').value = '';
+  document.getElementById('f-graphic-text').value = '';
+  document.getElementById('f-graphic-bg').value = '#0D1B3E';
+  document.getElementById('f-link-url').value = '';
+  document.getElementById('f-link-icon').value = '🔗';
+  document.getElementById('f-link-bg').value = '#0D1B3E';
+  document.getElementById('f-featured').checked = false;
+  document.getElementById('f-published').checked = true;
+  document.getElementById('f-ratio').value = '9:16';
+  setType('video');
+}
+
+function setType(type, el) {
+  currentType = type;
+  document.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('active', t.dataset.type === type));
+  document.getElementById('fields-video').style.display   = type === 'video'   ? 'block' : 'none';
+  document.getElementById('fields-photo').classList.toggle('show',   type === 'photo');
+  document.getElementById('fields-graphic').classList.toggle('show', type === 'graphic');
+  document.getElementById('fields-link').classList.toggle('show',    type === 'link');
+}
+
+// graphic live preview
+document.getElementById('f-graphic-text')?.addEventListener('input', updateGraphicPreview);
+document.getElementById('f-graphic-bg')?.addEventListener('input', updateGraphicPreview);
+function updateGraphicPreview() {
+  const text = document.getElementById('f-graphic-text').value || 'Preview text.';
+  const bg   = document.getElementById('f-graphic-bg').value;
+  document.getElementById('graphic-preview').style.background = bg;
+  document.getElementById('graphic-preview-text').textContent = text;
+}
+
+// ── SAVE ─────────────────────────────────────────────────────────────────────
+async function saveCard() {
+  const id = document.getElementById('f-id').value;
+  const payload = {
+    type:        currentType,
+    category:    document.getElementById('f-category').value,
+    ratio:       document.getElementById('f-ratio').value,
+    title:       document.getElementById('f-title').value.trim(),
+    subtitle:    document.getElementById('f-subtitle').value.trim(),
+    featured:    document.getElementById('f-featured').checked,
+    published:   document.getElementById('f-published').checked,
+    sort_order:  id ? allCards.find(c=>String(c.id)===id)?.sort_order ?? 999 : (allCards.length + 1),
+  };
+  if (currentType === 'video') {
+    payload.embed_url     = document.getElementById('f-embed').value.trim();
+    payload.overlay_steps = document.getElementById('f-overlay').value.trim();
+    payload.link_url      = document.getElementById('f-link-video').value.trim();
+  } else if (currentType === 'photo') {
+    payload.image_url     = document.getElementById('f-image').value.trim();
+    payload.overlay_steps = document.getElementById('f-overlay-photo').value.trim();
+    payload.link_url      = document.getElementById('f-link-photo').value.trim();
+  } else if (currentType === 'graphic') {
+    payload.graphic_text  = document.getElementById('f-graphic-text').value.trim();
+    payload.graphic_bg    = document.getElementById('f-graphic-bg').value;
+  } else if (currentType === 'link') {
+    payload.link_url      = document.getElementById('f-link-url').value.trim();
+    payload.link_icon     = document.getElementById('f-link-icon').value.trim() || '🔗';
+    payload.graphic_bg    = document.getElementById('f-link-bg').value;
+  }
+  if (!payload.title) { showToast('Title is required', 'error'); return; }
+
+  document.getElementById('save-btn').innerHTML = '<span class="loading-spinner"></span>';
+  const { error } = id
+    ? await sb.from('cards').update(payload).eq('id', id)
+    : await sb.from('cards').insert(payload);
+
+  document.getElementById('save-btn').innerHTML = `<span id="save-label">${id ? 'Update card' : 'Save card'}</span>`;
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast(id ? 'Card updated!' : 'Card added!', 'success');
+  closeModal();
+  loadCards();
+}
+
+// ── DELETE / TOGGLE ──────────────────────────────────────────────────────────
+async function deleteCard(id) {
+  if (!confirm('Delete this card? This cannot be undone.')) return;
+  const { error } = await sb.from('cards').delete().eq('id', id);
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('Card deleted.', 'success');
+  loadCards();
+}
+
+async function togglePublish(id, current) {
+  const { error } = await sb.from('cards').update({ published: !current }).eq('id', id);
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast(current ? 'Card unpublished.' : 'Card published!', 'success');
+  loadCards();
+}
+
+// ── TOAST ────────────────────────────────────────────────────────────────────
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── KEYBOARD ─────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+checkAuth();
+} // end CONFIGURED
+</script>
+</body>
+</html>
