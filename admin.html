@@ -17,7 +17,7 @@ window.addEventListener('error', function(e) {
   document.body.appendChild(el);
 }, true);
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -410,7 +410,7 @@ if (!CONFIGURED) {
     </div>`;
 } else {
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = (function(url,key){function tok(){try{return JSON.parse(localStorage.getItem('sb-auth-token'))}catch(e){return null}}function setTok(t){localStorage.setItem('sb-auth-token',JSON.stringify(t))}function clrTok(){localStorage.removeItem('sb-auth-token')}async function req(path,opts){opts=opts||{};var t=tok();var headers=Object.assign({'apikey':key,'Content-Type':'application/json','Authorization':'Bearer '+(t&&t.access_token?t.access_token:key)},opts.headers||{});var res=await fetch(url+path,Object.assign({},opts,{headers:headers}));var data=null;try{data=await res.json()}catch(e){}if(!res.ok){return{data:null,error:{message:(data&&(data.message||data.error_description||data.msg))||res.statusText}}}return{data:data,error:null}}return{auth:{signInWithPassword:async function(c){var res=await fetch(url+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'apikey':key,'Content-Type':'application/json'},body:JSON.stringify({email:c.email,password:c.password})});var data=await res.json();if(!res.ok){return{data:null,error:{message:data.error_description||data.msg||'Login failed'}}}setTok(data);return{data:data,error:null}},signOut:async function(){clrTok();return{error:null}},getSession:async function(){var t=tok();return{data:{session:t?{access_token:t.access_token}:null}}}},from:function(table){var base='/rest/v1/'+table;return{select:function(cols){cols=cols||'*';var q=base+'?select='+encodeURIComponent(cols);var builder={order:function(col,o){o=o||{};q+='&order='+col+'.'+(o.ascending===false?'desc':'asc');return builder},eq:function(col,val){q+='&'+col+'=eq.'+encodeURIComponent(val);return builder},then:function(resolve,reject){return req(q).then(resolve,reject)}};return builder},update:function(payload){return{eq:function(col,val){return req(base+'?'+col+'=eq.'+encodeURIComponent(val),{method:'PATCH',body:JSON.stringify(payload)})}}},insert:function(payload){return req(base,{method:'POST',body:JSON.stringify(payload)})},delete:function(){return{eq:function(col,val){return req(base+'?'+col+'=eq.'+encodeURIComponent(val),{method:'DELETE'})}}}}}}})(SUPABASE_URL, SUPABASE_ANON_KEY);
 let allCards = [];
 let currentFilter = 'all';
 let currentType = 'video';
