@@ -667,7 +667,7 @@ function showToast(msg, type='success') {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
-checkAuth();
+window.doLogin=doLogin;window.doLogout=doLogout;window.saveCard=saveCard;window.deleteCard=deleteCard;window.togglePublish=togglePublish;checkAuth();
 } // end CONFIGURED
 </script>
 </body>
